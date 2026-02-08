@@ -1,5 +1,5 @@
 name: omcli
-description: Control Timur's iPhone remotely — alarm, notifications, location, sleep mode, status.
+description: Control Timur's iPhone remotely — alarm, camera, notifications, location, sleep mode, status.
 
 ## Setup
 
@@ -8,6 +8,7 @@ Tailscale IP: 100.108.168.112
 Config: ~/.omcli/config.toml
 
 The iPhone app connects to the server over WebSocket. If one device is paired, `--device` is optional for all commands.
+The app stores pairing tokens per server URL, so switching between servers (e.g. local vs Tailscale) doesn't require re-pairing.
 
 ## Commands
 
@@ -41,6 +42,18 @@ Sleep mode persists across app restarts. The phone shows a dark clock screen wit
 When an alarm fires during sleep mode, the full-screen alarm overlay takes over.
 
 Always run `omcli sleep` before relying on alarm. Without it, iOS may kill the app and alarms won't loop.
+
+### Camera
+
+Take a photo using the phone's camera. Requires a live WebSocket connection (will not work via APNs).
+
+```
+omcli camera snap                              # back camera, auto filename (photo_YYYY-MM-DD_HH-MM-SS.jpg)
+omcli camera snap --facing front               # selfie camera
+omcli camera snap --facing back --output pic.jpg  # specific output path
+```
+
+The phone must have the app open (or in background with active WebSocket). If the device is offline, you'll get an error instead of a silent push notification.
 
 ### Notifications
 
@@ -107,14 +120,15 @@ omcli notify "Hey, check your phone" --priority critical
 ## Troubleshooting
 
 - "No devices connected" — the iOS app is not running or not connected. Open the app on the phone.
-- "Device not connected and APNs not configured" — set up APNs config for offline fallback.
+- "Device is not connected" — commands like `camera snap` need a live WebSocket. Open the app.
+- "Device not connected and APNs not configured" — set up APNs config for offline fallback (alarm/sleep only).
 - Alarm doesn't loop when app is killed — this is an iOS limitation. Use `omcli sleep` before bed.
 - `--device` flag is needed only when multiple devices are paired.
+- If the app lost its token (reinstall, etc.), it auto-recovers by requesting a new pairing code.
 
 ## Protocol commands (not exposed as CLI yet)
 
 These work via the REST API (`POST /api/command`) but have no CLI wrapper:
 
 - `tts.speak` — text-to-speech: `{"command": "tts.speak", "params": {"text": "Hello", "voice": "optional"}}`
-- `camera.snap` — take photo: `{"command": "camera.snap", "params": {"facing": "front"|"back"}}`
 - `device.status` — battery, charging state: `{"command": "device.status", "params": {}}`
