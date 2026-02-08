@@ -1,24 +1,38 @@
-//
-//  ContentView.swift
-//  omcli
-//
-//  Created by Timur Turatbekov on 08.02.2026.
-//
-
 import SwiftUI
 
 struct ContentView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
-    }
-}
+    let webSocket: WebSocketService
+    let alarmService: AlarmService
+    let locationService: LocationService
+    let cameraService: CameraService
 
-#Preview {
-    ContentView()
+    var body: some View {
+        ZStack {
+            TabView {
+                Tab("Dashboard", systemImage: "gauge.open.with.lines.needle.33percent") {
+                    DashboardView(webSocket: webSocket)
+                }
+
+                Tab("Settings", systemImage: "gearshape") {
+                    SettingsView(
+                        webSocket: webSocket,
+                        locationService: locationService,
+                        cameraService: cameraService
+                    )
+                }
+            }
+
+            if alarmService.isActive {
+                AlarmView(message: alarmService.message) {
+                    alarmService.stop()
+                    webSocket.sendEvent(
+                        event: "alarm.dismissed",
+                        data: ["dismissed_at": ISO8601DateFormatter().string(from: Date())]
+                    )
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut, value: alarmService.isActive)
+    }
 }
