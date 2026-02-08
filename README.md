@@ -234,7 +234,7 @@ bind = "127.0.0.1"
 
 ## AI Agent Integration
 
-The file [`omcli-skill.md`](omcli-skill.md) is a skill definition for AI agents (OpenClaw, Claude Code, etc.). Give it to your agent so it can control your phone with natural language:
+The file [`skill/SKILL.md`](skill/SKILL.md) is a skill definition for AI agents (OpenClaw, Claude Code, etc.). Give it to your agent so it can control your phone with natural language:
 
 > "Wake me up at 7am with a loud alarm"
 > "Send a notification to my phone"
