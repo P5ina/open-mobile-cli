@@ -27,6 +27,8 @@ pub enum DeviceMessage {
     },
     #[serde(rename = "push_token")]
     PushToken { token: String },
+    #[serde(rename = "voip_token")]
+    VoipToken { token: String },
 }
 
 /// Messages from server to device over WebSocket
@@ -93,6 +95,8 @@ pub struct Device {
     pub paired_at: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub push_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub voip_token: Option<String>,
 }
 
 /// GET /api/devices response item

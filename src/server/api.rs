@@ -8,6 +8,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
+use tracing::info;
+
 use crate::config;
 use crate::protocol::*;
 use crate::server::state::AppState;
@@ -58,6 +60,7 @@ pub async fn post_command(
     // If device is not connected, try APNs fallback for alarm/sleep commands only
     if !is_connected {
         drop(connections);
+        info!("Device {} offline, attempting push fallback for {}", device_id, req.command);
         if req.command.starts_with("alarm.") || req.command.starts_with("sleep.") {
             return try_apns_fallback(&state, &device_id, &req.command, &req.params).await;
         }
@@ -67,6 +70,7 @@ pub async fn post_command(
         ));
     }
 
+    info!("Device {} online, sending {} via WebSocket", device_id, req.command);
     let cmd_id = Uuid::new_v4().to_string();
     let server_msg = ServerMessage::Command {
         id: cmd_id.clone(),
@@ -133,6 +137,28 @@ async fn try_apns_fallback(
         format!("Device {} not found", device_id),
     ))?;
 
+    // Prefer VoIP push for alarm.start (bypasses DND via CallKit)
+    if command == "alarm.start" {
+        if let Some(voip_token) = &device.voip_token {
+            info!("Sending VoIP push to device {} (token {}...)", device_id, &voip_token[..8]);
+            let voip_token = voip_token.clone();
+            drop(devices);
+
+            apns.send_voip_push(&voip_token, command, params)
+                .await
+                .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+
+            info!("VoIP push sent successfully");
+            return Ok(Json(CommandResponse {
+                id: Uuid::new_v4().to_string(),
+                status: "ok".into(),
+                data: Some(serde_json::json!({"delivered_via": "voip"})),
+                error: None,
+                error_code: None,
+            }));
+        }
+    }
+
     let push_token = device.push_token.as_ref().ok_or((
         StatusCode::BAD_REQUEST,
         format!(
@@ -144,6 +170,7 @@ async fn try_apns_fallback(
     let push_token = push_token.clone();
     drop(devices);
 
+    info!("Sending regular APNs push to device {} (token {}...)", device_id, &push_token[..8]);
     apns.send_alarm_push(&push_token, command, params)
         .await
         .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
@@ -209,6 +236,7 @@ pub async fn pair_device(
         token: token.clone(),
         paired_at: now,
         push_token: None,
+        voip_token: None,
     };
 
     // Save device to state

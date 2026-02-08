@@ -82,4 +82,41 @@ impl ApnsClient {
             }
         }
     }
+
+    pub async fn send_voip_push(
+        &self,
+        token: &str,
+        command: &str,
+        params: &serde_json::Value,
+    ) -> Result<(), String> {
+        let voip_topic = format!("{}.voip", self.bundle_id);
+
+        let builder = DefaultNotificationBuilder::new()
+            .set_content_available();
+
+        let options = NotificationOptions {
+            apns_topic: Some(&voip_topic),
+            apns_push_type: Some(PushType::Voip),
+            apns_priority: Some(Priority::High),
+            ..Default::default()
+        };
+
+        let mut payload = builder.build(token, options);
+
+        let custom = AlarmPayload { command, params };
+        payload
+            .add_custom_data("omcli", &custom)
+            .map_err(|e| format!("Failed to build VoIP payload: {e}"))?;
+
+        match self.client.send(payload).await {
+            Ok(response) => {
+                info!("VoIP push sent to {}: {:?}", &token[..8], response);
+                Ok(())
+            }
+            Err(e) => {
+                warn!("VoIP push failed: {e}");
+                Err(format!("VoIP push failed: {e}"))
+            }
+        }
+    }
 }

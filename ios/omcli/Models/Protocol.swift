@@ -8,6 +8,7 @@ enum DeviceMessage: Encodable {
     case response(id: String, status: String, data: AnyCodable?, error: ErrorInfo?)
     case event(event: String, data: AnyCodable?)
     case pushToken(token: String)
+    case voipToken(token: String)
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
@@ -32,6 +33,9 @@ enum DeviceMessage: Encodable {
             try container.encodeIfPresent(data, forKey: .data)
         case .pushToken(let token):
             try container.encode("push_token", forKey: .type)
+            try container.encode(token, forKey: .token)
+        case .voipToken(let token):
+            try container.encode("voip_token", forKey: .type)
             try container.encode(token, forKey: .token)
         }
     }

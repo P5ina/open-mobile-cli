@@ -74,6 +74,14 @@ final class WebSocketService: @unchecked Sendable {
         addLog("Sent push token")
     }
 
+    func sendVoipToken(_ token: String) {
+        UserDefaults.standard.set(token, forKey: "voip_token")
+        guard connectionState == .paired else { return }
+        let msg = DeviceMessage.voipToken(token: token)
+        send(msg)
+        addLog("Sent VoIP token")
+    }
+
     // MARK: - Private
 
     private func doConnect() {
@@ -113,6 +121,14 @@ final class WebSocketService: @unchecked Sendable {
             let msg = DeviceMessage.pushToken(token: token)
             send(msg)
             addLog("Sent stored push token")
+        }
+    }
+
+    private func sendStoredVoipToken() {
+        if let token = UserDefaults.standard.string(forKey: "voip_token") {
+            let msg = DeviceMessage.voipToken(token: token)
+            send(msg)
+            addLog("Sent stored VoIP token")
         }
     }
 
@@ -188,6 +204,7 @@ final class WebSocketService: @unchecked Sendable {
                 connectionState = .paired
                 reconnectAttempt = 0
                 sendStoredPushToken()
+                sendStoredVoipToken()
             } else {
                 addLog("Auth failed: \(error ?? "unknown")")
                 KeychainService.deleteToken(for: serverURL)

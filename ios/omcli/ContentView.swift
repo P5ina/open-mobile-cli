@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     let webSocket: WebSocketService
     let alarmService: AlarmService
+    let callService: CallService
     let sleepService: SleepService
     let locationService: LocationService
     let cameraService: CameraService
@@ -37,6 +38,7 @@ struct ContentView: View {
             if alarmService.isActive {
                 AlarmView(message: alarmService.message) {
                     alarmService.stop()
+                    callService.endActiveCall()
                     webSocket.sendEvent(
                         event: "alarm.dismissed",
                         data: ["dismissed_at": ISO8601DateFormatter().string(from: Date())]

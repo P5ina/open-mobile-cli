@@ -228,6 +228,17 @@ async fn handle_device_message(text: &str, device_id: &str, state: &Arc<AppState
                 warn!("Push token received from unknown device {}", device_id);
             }
         }
+        DeviceMessage::VoipToken { token } => {
+            let mut devices = state.devices.write().await;
+            if let Some(device) = devices.get_mut(device_id) {
+                device.voip_token = Some(token);
+                info!("Stored VoIP token for device {}", device_id);
+                let devices_vec: Vec<_> = devices.values().cloned().collect();
+                let _ = config::save_devices(&devices_vec);
+            } else {
+                warn!("VoIP token received from unknown device {}", device_id);
+            }
+        }
         DeviceMessage::Hello { .. } => {
             warn!("Unexpected Hello message from {}", device_id);
         }
