@@ -8,6 +8,8 @@ pub struct Config {
     pub server: ServerConfig,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub apns: Option<ApnsConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub relay: Option<RelayConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -28,6 +30,36 @@ pub struct ServerConfig {
     pub port: u16,
     #[serde(default = "default_bind")]
     pub bind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub relay_url: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RelayConfig {
+    #[serde(default = "default_relay_port")]
+    pub port: u16,
+    #[serde(default = "default_bind")]
+    pub bind: String,
+    pub apns_key_path: String,
+    pub apns_key_id: String,
+    pub apns_team_id: String,
+    pub apns_bundle_id: String,
+    #[serde(default)]
+    pub apns_sandbox: bool,
+    #[serde(default = "default_max_requests")]
+    pub max_requests_per_device_per_hour: u32,
+}
+
+impl RelayConfig {
+    pub fn to_apns_config(&self) -> ApnsConfig {
+        ApnsConfig {
+            key_path: self.apns_key_path.clone(),
+            key_id: self.apns_key_id.clone(),
+            team_id: self.apns_team_id.clone(),
+            bundle_id: self.apns_bundle_id.clone(),
+            sandbox: self.apns_sandbox,
+        }
+    }
 }
 
 fn default_port() -> u16 {
@@ -36,6 +68,14 @@ fn default_port() -> u16 {
 
 fn default_bind() -> String {
     "127.0.0.1".to_string()
+}
+
+fn default_relay_port() -> u16 {
+    7334
+}
+
+fn default_max_requests() -> u32 {
+    60
 }
 
 impl Config {
@@ -97,8 +137,10 @@ impl Config {
                 api_key,
                 port,
                 bind: bind.to_string(),
+                relay_url: None,
             },
             apns: None,
+            relay: None,
         };
         config.save().expect("Failed to save initial config");
         config

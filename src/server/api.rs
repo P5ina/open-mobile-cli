@@ -126,11 +126,32 @@ async fn try_apns_fallback(
     command: &str,
     params: &serde_json::Value,
 ) -> Result<Json<CommandResponse>, (StatusCode, String)> {
-    let apns = state.apns.as_ref().ok_or((
-        StatusCode::NOT_FOUND,
-        format!("Device {} not connected and APNs not configured", device_id),
-    ))?;
+    // If local APNs is configured, use it directly
+    if let Some(apns) = state.apns.as_ref() {
+        return try_local_apns(apns, state, device_id, command, params).await;
+    }
 
+    // Otherwise fall back to relay
+    if let Some(relay_url) = state.relay_url.as_ref() {
+        return send_via_relay(relay_url, state, device_id, command, params).await;
+    }
+
+    Err((
+        StatusCode::NOT_FOUND,
+        format!(
+            "Device {} not connected and no push configured (set [apns] or relay_url)",
+            device_id
+        ),
+    ))
+}
+
+async fn try_local_apns(
+    apns: &crate::server::apns::ApnsClient,
+    state: &Arc<AppState>,
+    device_id: &str,
+    command: &str,
+    params: &serde_json::Value,
+) -> Result<Json<CommandResponse>, (StatusCode, String)> {
     let devices = state.devices.read().await;
     let device = devices.get(device_id).ok_or((
         StatusCode::NOT_FOUND,
@@ -202,6 +223,105 @@ async fn try_apns_fallback(
         id: Uuid::new_v4().to_string(),
         status: "ok".into(),
         data: Some(serde_json::json!({"delivered_via": "apns"})),
+        error: None,
+        error_code: None,
+    }))
+}
+
+async fn send_via_relay(
+    relay_url: &str,
+    state: &Arc<AppState>,
+    device_id: &str,
+    command: &str,
+    params: &serde_json::Value,
+) -> Result<Json<CommandResponse>, (StatusCode, String)> {
+    let devices = state.devices.read().await;
+    let device = devices.get(device_id).ok_or((
+        StatusCode::NOT_FOUND,
+        format!("Device {} not found", device_id),
+    ))?;
+
+    let client = reqwest::Client::new();
+
+    // alarm.start with voip_token → relay VoIP push
+    if command == "alarm.start" {
+        if let Some(voip_token) = &device.voip_token {
+            info!("Relay VoIP push to device {} via {}", device_id, relay_url);
+            let voip_token = voip_token.clone();
+            let sound = params.get("sound").and_then(|v| v.as_str()).map(String::from);
+            let message = params.get("message").and_then(|v| v.as_str()).map(String::from);
+            drop(devices);
+
+            let resp = client
+                .post(format!("{}/relay/voip", relay_url))
+                .json(&serde_json::json!({
+                    "voip_token": voip_token,
+                    "type": command,
+                    "sound": sound,
+                    "message": message,
+                }))
+                .send()
+                .await
+                .map_err(|e| (StatusCode::BAD_GATEWAY, format!("Relay request failed: {e}")))?;
+
+            if !resp.status().is_success() {
+                let body = resp.text().await.unwrap_or_default();
+                return Err((StatusCode::BAD_GATEWAY, format!("Relay error: {body}")));
+            }
+
+            return Ok(Json(CommandResponse {
+                id: Uuid::new_v4().to_string(),
+                status: "ok".into(),
+                data: Some(serde_json::json!({"delivered_via": "relay_voip"})),
+                error: None,
+                error_code: None,
+            }));
+        }
+    }
+
+    // notify.* → relay push with title/body from params
+    let (title, body) = if command.starts_with("notify.") {
+        (
+            params.get("title").and_then(|v| v.as_str()).unwrap_or("omcli").to_string(),
+            params.get("body").and_then(|v| v.as_str()).unwrap_or("Notification").to_string(),
+        )
+    } else {
+        // alarm.* / sleep.* → generic alert
+        (
+            "omcli".to_string(),
+            format!("Command: {}", command),
+        )
+    };
+
+    let push_token = device.push_token.as_ref().ok_or((
+        StatusCode::BAD_REQUEST,
+        format!("Device {} has no push token registered", device_id),
+    ))?;
+
+    info!("Relay push to device {} via {}", device_id, relay_url);
+    let push_token = push_token.clone();
+    drop(devices);
+
+    let resp = client
+        .post(format!("{}/relay/push", relay_url))
+        .json(&serde_json::json!({
+            "device_token": push_token,
+            "title": title,
+            "body": body,
+        }))
+        .send()
+        .await
+        .map_err(|e| (StatusCode::BAD_GATEWAY, format!("Relay request failed: {e}")))?;
+
+    if !resp.status().is_success() {
+        let body = resp.text().await.unwrap_or_default();
+        return Err((StatusCode::BAD_GATEWAY, format!("Relay error: {body}")));
+    }
+
+    Ok(Json(CommandResponse {
+        id: Uuid::new_v4().to_string(),
+        status: "ok".into(),
+        data: Some(serde_json::json!({"delivered_via": "relay"})),
         error: None,
         error_code: None,
     }))

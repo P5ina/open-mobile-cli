@@ -110,6 +110,7 @@ pub async fn serve(port: u16, bind: String) {
         devices,
         Config::data_dir(),
         apns,
+        config.server.relay_url.clone(),
     ));
 
     // Authenticated REST routes

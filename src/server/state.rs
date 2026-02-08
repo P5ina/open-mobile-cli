@@ -31,6 +31,7 @@ pub struct AppState {
     pub start_time: Instant,
     pub data_dir: PathBuf,
     pub apns: Option<ApnsClient>,
+    pub relay_url: Option<String>,
 }
 
 impl AppState {
@@ -39,6 +40,7 @@ impl AppState {
         devices: HashMap<String, Device>,
         data_dir: PathBuf,
         apns: Option<ApnsClient>,
+        relay_url: Option<String>,
     ) -> Self {
         let (client_tx, _) = broadcast::channel(256);
         Self {
@@ -51,6 +53,7 @@ impl AppState {
             start_time: Instant::now(),
             data_dir,
             apns,
+            relay_url,
         }
     }
 }

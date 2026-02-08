@@ -65,6 +65,13 @@ enum Commands {
         #[command(subcommand)]
         action: Option<ConfigAction>,
     },
+    /// Start push notification relay server
+    Relay {
+        #[arg(long)]
+        port: Option<u16>,
+        #[arg(long)]
+        bind: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -172,5 +179,8 @@ async fn main() {
                 omcli::cli::show_config().await;
             }
         },
+        Commands::Relay { port, bind } => {
+            omcli::relay::relay(port, bind).await;
+        }
     }
 }
