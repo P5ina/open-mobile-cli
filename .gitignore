@@ -2,10 +2,7 @@
 /target
 
 # iOS
-ios/OpenMobileCLI.xcodeproj/xcuserdata/
-ios/OpenMobileCLI.xcodeproj/project.xcworkspace/xcuserdata/
-ios/DerivedData/
-ios/.build/
+xcuserdata/
 
 # Config
 .omcli/
