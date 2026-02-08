@@ -7,46 +7,57 @@ Control your phone from anywhere.
 
 | Component | Language | Description |
 |-----------|----------|-------------|
-| `backend/` | Go | WebSocket relay server |
-| `cli/` | Go | Command-line client |
+| `src/server/` | Rust | WebSocket relay server (`omcli serve`) |
+| `src/cli/` | Rust | CLI commands |
 | `ios/` | Swift | iOS companion app |
 | `protocol/` | — | Protocol specification |
 
-## Quick Start
+Single binary — server and CLI in one:
 
 ```bash
-# Install CLI
-go install github.com/P5ina/open-mobile-cli/cli/cmd/omcli@latest
+cargo install open-mobile-cli
+```
 
-# Start backend
-go install github.com/P5ina/open-mobile-cli/backend/cmd/omcli-server@latest
-omcli-server
+## Usage
 
-# Pair your phone
+```bash
+# Start server
+omcli serve
+omcli serve --port 8080 --bind 0.0.0.0
+
+# Pair device
 omcli pair <code>
 
-# Use it
+# Commands
 omcli alarm start --sound loud
 omcli alarm stop
 omcli locate
 omcli notify "Hello from CLI"
 omcli tts "Wake up"
-omcli camera snap
+omcli camera snap --facing front
 omcli status
+omcli devices
 ```
 
-## Commands (v1)
+## Commands
 
-- **alarm** — start/stop alarm with configurable sound level
-- **notify** — send push notification
-- **tts** — text-to-speech on device
-- **location** — get device coordinates
-- **camera** — take photo
-- **status** — battery, charging, silent mode
+| Command | Description |
+|---------|-------------|
+| `alarm start/stop` | Trigger alarm with configurable sound level |
+| `notify` | Send push notification |
+| `tts` | Text-to-speech on device |
+| `locate` | Get device GPS coordinates |
+| `camera snap` | Take photo |
+| `status` | Battery, charging, silent mode |
 
 ## Architecture
 
-See [ARCHITECTURE.md](docs/ARCHITECTURE.md)
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
+## Tech Stack
+
+- **Rust** — axum, clap, tokio, sqlx + SQLite
+- **Swift** — SwiftUI, URLSessionWebSocketTask
 
 ## License
 
