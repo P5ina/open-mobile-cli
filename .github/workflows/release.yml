@@ -20,9 +20,6 @@ jobs:
             os: ubuntu-latest
             archive: omcli-linux-arm64.tar.gz
             cross: true
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            archive: omcli-macos-amd64.tar.gz
           - target: aarch64-apple-darwin
             os: macos-latest
             archive: omcli-macos-arm64.tar.gz
