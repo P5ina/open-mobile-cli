@@ -74,6 +74,83 @@ omcli devices                         # list paired devices
 | `status` | Server uptime, connected devices |
 | `devices` | List paired devices |
 
+## Offline Push Notifications
+
+When the iOS app is connected via WebSocket, commands are delivered instantly. When the app is in background or the phone is offline, omcli falls back to Apple Push Notifications (APNs) to wake the device.
+
+There are two ways to configure push — choose based on whether you have an Apple Developer account.
+
+### Option A: Direct APNs (you have an Apple Developer account)
+
+The server sends pushes directly to Apple. No extra infrastructure needed.
+
+```
+omcli serve  →  APNs  →  iPhone
+```
+
+1. Get a `.p8` key from [Apple Developer Portal](https://developer.apple.com/account/resources/authkeys/list) (Keys → Create)
+2. Place the key file next to your config:
+
+```bash
+cp AuthKey_XXXXXXXXXX.p8 ~/.omcli/   # or /data/ in Docker
+```
+
+3. Add the `[apns]` section to `config.toml`:
+
+```toml
+[apns]
+key_path = "AuthKey_XXXXXXXXXX.p8"   # relative to config dir, or absolute path
+key_id = "XXXXXXXXXX"
+team_id = "XXXXXXXXXX"
+bundle_id = "com.example.omcli"
+# sandbox = false                    # set to true for development builds
+```
+
+4. Restart the server. Done — pushes go directly to Apple.
+
+### Option B: Push Relay (no Apple Developer account)
+
+A relay is a public server (run by someone with a `.p8` key) that proxies push requests to APNs. Your self-hosted server sends HTTP requests to the relay instead of talking to Apple directly.
+
+```
+self-hosted omcli  →  push relay  →  APNs  →  iPhone
+```
+
+**On your server** — just set `relay_url`, no APNs keys needed:
+
+```toml
+# data/config.toml
+[server]
+relay_url = "https://relay.example.com"
+```
+
+**On the relay server** — requires the `.p8` key and a `[relay]` config section:
+
+```toml
+# data/config.toml
+[relay]
+apns_key_path = "/data/AuthKey_XXXXXXXXXX.p8"
+apns_key_id = "XXXXXXXXXX"
+apns_team_id = "XXXXXXXXXX"
+apns_bundle_id = "com.example.omcli"
+# max_requests_per_device_per_hour = 60
+```
+
+The relay exposes three endpoints:
+- `POST /relay/push` — send a visible notification
+- `POST /relay/voip` — send a VoIP push (bypasses Do Not Disturb)
+- `GET /relay/health` — health check
+
+### Push priority
+
+When a device is offline, the server tries in order:
+
+1. **Local APNs** — if `[apns]` is configured, send directly
+2. **Relay** — if `relay_url` is set, proxy through relay
+3. **Error** — no push method available
+
+If both `[apns]` and `relay_url` are configured, direct APNs always takes priority.
+
 ## Self-Hosting with Docker
 
 ```yaml
@@ -88,34 +165,28 @@ services:
     environment:
       - RUST_LOG=info
     restart: unless-stopped
+
+  relay:
+    image: p5ina/omcli:latest
+    command: ["relay", "--bind", "0.0.0.0", "--port", "7334"]
+    ports:
+      - "7334:7334"
+    volumes:
+      - ./data:/data
+    environment:
+      - RUST_LOG=info
+    restart: unless-stopped
 ```
 
 ```bash
+# Deploy server
 docker compose up -d serve
-```
 
-Config and paired devices are stored in the mounted `/data` volume.
-
-### Push Relay
-
-Self-hosted instances can send APNs push notifications through a relay server, no Apple Developer account needed:
-
-```
-self-hosted omcli  →  push relay  →  APNs  →  iPhone
-```
-
-```bash
-# On relay server (with Apple Developer .p8 key)
+# Deploy relay (separate machine, or same machine if you need both)
 docker compose up -d relay
 ```
 
-Add `relay_url` to the self-hosted server config:
-
-```toml
-# data/config.toml
-[server]
-relay_url = "https://relay.example.com"
-```
+Config, paired devices, and `.p8` keys are stored in the mounted `./data` volume.
 
 ## Configuration
 
