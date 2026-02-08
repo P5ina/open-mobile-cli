@@ -61,7 +61,7 @@ pub async fn post_command(
     if !is_connected {
         drop(connections);
         info!("Device {} offline, attempting push fallback for {}", device_id, req.command);
-        if req.command.starts_with("alarm.") || req.command.starts_with("sleep.") {
+        if req.command.starts_with("alarm.") || req.command.starts_with("sleep.") || req.command.starts_with("notify.") {
             return try_apns_fallback(&state, &device_id, &req.command, &req.params).await;
         }
         return Err((
@@ -136,6 +136,29 @@ async fn try_apns_fallback(
         StatusCode::NOT_FOUND,
         format!("Device {} not found", device_id),
     ))?;
+
+    // Notify commands: send a visible APNs alert
+    if command.starts_with("notify.") {
+        let push_token = device.push_token.as_ref().ok_or((
+            StatusCode::BAD_REQUEST,
+            format!("Device {} has no push token registered", device_id),
+        ))?;
+        info!("Sending notify push to device {} (token {}...)", device_id, &push_token[..8]);
+        let push_token = push_token.clone();
+        drop(devices);
+
+        apns.send_notify_push(&push_token, params)
+            .await
+            .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+
+        return Ok(Json(CommandResponse {
+            id: Uuid::new_v4().to_string(),
+            status: "ok".into(),
+            data: Some(serde_json::json!({"delivered_via": "apns"})),
+            error: None,
+            error_code: None,
+        }));
+    }
 
     // Prefer VoIP push for alarm.start (bypasses DND via CallKit)
     if command == "alarm.start" {

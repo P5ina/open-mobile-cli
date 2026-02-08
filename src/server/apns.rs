@@ -83,6 +83,40 @@ impl ApnsClient {
         }
     }
 
+    pub async fn send_notify_push(
+        &self,
+        token: &str,
+        params: &serde_json::Value,
+    ) -> Result<(), String> {
+        let title = params.get("title").and_then(|v| v.as_str()).unwrap_or("omcli");
+        let body = params.get("body").and_then(|v| v.as_str()).unwrap_or("Notification");
+
+        let builder = DefaultNotificationBuilder::new()
+            .set_title(title)
+            .set_body(body)
+            .set_sound("default");
+
+        let options = NotificationOptions {
+            apns_topic: Some(&self.bundle_id),
+            apns_push_type: Some(PushType::Alert),
+            apns_priority: Some(Priority::High),
+            ..Default::default()
+        };
+
+        let payload = builder.build(token, options);
+
+        match self.client.send(payload).await {
+            Ok(response) => {
+                info!("Notify push sent to {}: {:?}", &token[..8], response);
+                Ok(())
+            }
+            Err(e) => {
+                warn!("Notify push failed: {e}");
+                Err(format!("Notify push failed: {e}"))
+            }
+        }
+    }
+
     pub async fn send_voip_push(
         &self,
         token: &str,
