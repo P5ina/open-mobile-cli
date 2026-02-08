@@ -41,6 +41,18 @@ enum Commands {
         /// 6-digit pairing code from device
         code: String,
     },
+    /// Activate sleep/standby mode (keeps screen on for alarm)
+    Sleep {
+        /// Target device ID
+        #[arg(long)]
+        device: Option<String>,
+    },
+    /// Deactivate sleep mode
+    Wake {
+        /// Target device ID
+        #[arg(long)]
+        device: Option<String>,
+    },
     /// List paired devices
     Devices,
     /// View or update configuration
@@ -106,6 +118,12 @@ async fn main() {
         }
         Commands::Locate { device } => {
             omcli::cli::locate(device.as_deref()).await;
+        }
+        Commands::Sleep { device } => {
+            omcli::cli::sleep_start(device.as_deref()).await;
+        }
+        Commands::Wake { device } => {
+            omcli::cli::sleep_stop(device.as_deref()).await;
         }
         Commands::Status => {
             omcli::cli::server_status().await;

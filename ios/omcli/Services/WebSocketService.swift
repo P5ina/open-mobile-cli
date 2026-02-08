@@ -66,6 +66,14 @@ final class WebSocketService: @unchecked Sendable {
         send(msg)
     }
 
+    func sendPushToken(_ token: String) {
+        UserDefaults.standard.set(token, forKey: "push_token")
+        guard connectionState == .paired else { return }
+        let msg = DeviceMessage.pushToken(token: token)
+        send(msg)
+        addLog("Sent push token")
+    }
+
     // MARK: - Private
 
     private func doConnect() {
@@ -102,6 +110,14 @@ final class WebSocketService: @unchecked Sendable {
             if self.deviceToken != nil {
                 self.sendAuth()
             }
+        }
+    }
+
+    private func sendStoredPushToken() {
+        if let token = UserDefaults.standard.string(forKey: "push_token") {
+            let msg = DeviceMessage.pushToken(token: token)
+            send(msg)
+            addLog("Sent stored push token")
         }
     }
 
@@ -176,6 +192,7 @@ final class WebSocketService: @unchecked Sendable {
                 pairingCode = nil
                 connectionState = .paired
                 reconnectAttempt = 0
+                sendStoredPushToken()
             } else {
                 addLog("Auth failed: \(error ?? "unknown")")
                 KeychainService.delete(key: .deviceToken)

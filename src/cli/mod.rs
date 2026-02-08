@@ -4,6 +4,7 @@ mod devices;
 mod locate;
 mod notify;
 mod pair;
+mod sleep;
 mod status;
 
 pub use alarm::{alarm_start, alarm_stop};
@@ -12,6 +13,7 @@ pub use devices::list_devices;
 pub use locate::locate;
 pub use notify::send_notification;
 pub use pair::pair;
+pub use sleep::{sleep_start, sleep_stop};
 pub use status::server_status;
 
 use crate::config::Config;

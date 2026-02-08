@@ -25,6 +25,8 @@ pub enum DeviceMessage {
         #[serde(skip_serializing_if = "Option::is_none")]
         data: Option<serde_json::Value>,
     },
+    #[serde(rename = "push_token")]
+    PushToken { token: String },
 }
 
 /// Messages from server to device over WebSocket
@@ -85,6 +87,8 @@ pub struct Device {
     pub name: String,
     pub token: String,
     pub paired_at: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub push_token: Option<String>,
 }
 
 /// GET /api/devices response item

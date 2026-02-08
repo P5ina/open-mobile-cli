@@ -2,24 +2,19 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSCameraUsageDescription</key>
-	<string>OpenMobileCLI needs camera access to take photos on command from the CLI.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>OpenMobileCLI needs location access to report device position on command from the CLI.</string>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>audio</string>
-	</array>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>OpenMobileCLI uses the local network to discover servers running on your LAN.</string>
-	<key>NSBonjourServices</key>
-	<array>
-		<string>_omcli._tcp</string>
-	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_omcli._tcp</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

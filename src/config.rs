@@ -6,6 +6,18 @@ use crate::protocol::Device;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
     pub server: ServerConfig,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub apns: Option<ApnsConfig>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ApnsConfig {
+    pub key_path: String,
+    pub key_id: String,
+    pub team_id: String,
+    pub bundle_id: String,
+    #[serde(default)]
+    pub sandbox: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -86,6 +98,7 @@ impl Config {
                 port,
                 bind: bind.to_string(),
             },
+            apns: None,
         };
         config.save().expect("Failed to save initial config");
         config

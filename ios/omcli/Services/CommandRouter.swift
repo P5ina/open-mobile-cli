@@ -2,6 +2,7 @@ import UIKit
 
 final class CommandRouter {
     let alarmService: AlarmService
+    let sleepService: SleepService
     let locationService: LocationService
     let cameraService: CameraService
     let notificationService: NotificationService
@@ -9,12 +10,14 @@ final class CommandRouter {
 
     init(
         alarmService: AlarmService,
+        sleepService: SleepService,
         locationService: LocationService,
         cameraService: CameraService,
         notificationService: NotificationService,
         ttsService: TTSService
     ) {
         self.alarmService = alarmService
+        self.sleepService = sleepService
         self.locationService = locationService
         self.cameraService = cameraService
         self.notificationService = notificationService
@@ -67,6 +70,14 @@ final class CommandRouter {
             let facing = params["facing"]?.stringValue() ?? "back"
             let result = try await cameraService.takePhoto(facing: facing)
             return result.mapValues(\.value)
+
+        case "sleep.start":
+            sleepService.start()
+            return nil
+
+        case "sleep.stop":
+            sleepService.stop()
+            return nil
 
         case "device.status":
             return deviceStatus()

@@ -7,6 +7,7 @@ enum DeviceMessage: Encodable {
     case auth(deviceId: String, token: String)
     case response(id: String, status: String, data: AnyCodable?, error: ErrorInfo?)
     case event(event: String, data: AnyCodable?)
+    case pushToken(token: String)
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
@@ -29,6 +30,9 @@ enum DeviceMessage: Encodable {
             try container.encode("event", forKey: .type)
             try container.encode(event, forKey: .event)
             try container.encodeIfPresent(data, forKey: .data)
+        case .pushToken(let token):
+            try container.encode("push_token", forKey: .type)
+            try container.encode(token, forKey: .token)
         }
     }
 

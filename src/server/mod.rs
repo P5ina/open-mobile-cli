@@ -1,4 +1,5 @@
 mod api;
+pub mod apns;
 mod auth;
 pub mod state;
 mod ws_client;
@@ -16,6 +17,7 @@ use tower_http::cors::CorsLayer;
 use tracing::{info, warn};
 
 use crate::config::{self, Config};
+use apns::ApnsClient;
 use state::AppState;
 
 fn is_localhost(bind: &str) -> bool {
@@ -92,10 +94,22 @@ pub async fn serve(port: u16, bind: String) {
         devices.len()
     );
 
+    // Initialize APNs client if configured
+    let apns = config.apns.as_ref().and_then(|apns_config| {
+        match ApnsClient::new(apns_config) {
+            Ok(client) => Some(client),
+            Err(e) => {
+                warn!("APNs not available: {e}");
+                None
+            }
+        }
+    });
+
     let state = Arc::new(AppState::new(
         config.server.api_key.clone(),
         devices,
         Config::data_dir(),
+        apns,
     ));
 
     // Authenticated REST routes

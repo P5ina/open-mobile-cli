@@ -14,11 +14,29 @@ final class NotificationService {
 
     func requestPermission() async -> Bool {
         do {
-            return try await UNUserNotificationCenter.current()
-                .requestAuthorization(options: [.alert, .sound, .badge])
+            let granted = try await UNUserNotificationCenter.current()
+                .requestAuthorization(options: [.alert, .sound, .badge, .criticalAlert])
+            if granted {
+                registerCategories()
+            }
+            return granted
         } catch {
             return false
         }
+    }
+
+    private func registerCategories() {
+        let stopAction = UNNotificationAction(
+            identifier: "STOP_ALARM",
+            title: "Stop Alarm",
+            options: [.destructive, .foreground]
+        )
+        let alarmCategory = UNNotificationCategory(
+            identifier: "alarm",
+            actions: [stopAction],
+            intentIdentifiers: []
+        )
+        UNUserNotificationCenter.current().setNotificationCategories([alarmCategory])
     }
 
     func send(title: String, body: String, priority: String) async throws {

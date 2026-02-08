@@ -1,6 +1,7 @@
 import AVFoundation
 import AudioToolbox
 import UIKit
+import UserNotifications
 
 @Observable
 final class AlarmService {
@@ -23,6 +24,8 @@ final class AlarmService {
         if sound == "hell" {
             startVibrationLoop()
         }
+
+        postAlarmNotification(message: message)
     }
 
     func stop() {
@@ -33,9 +36,26 @@ final class AlarmService {
         isActive = false
         message = nil
         restoreVolume()
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ["active_alarm"])
     }
 
     // MARK: - Private
+
+    private func postAlarmNotification(message: String?) {
+        let content = UNMutableNotificationContent()
+        content.title = "Alarm"
+        content.body = message ?? "Alarm is ringing"
+        content.interruptionLevel = .critical
+        content.categoryIdentifier = "alarm"
+
+        let request = UNNotificationRequest(
+            identifier: "active_alarm",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
+    }
 
     private func configureAudioSession() {
         let session = AVAudioSession.sharedInstance()

@@ -5,6 +5,7 @@ use std::time::Instant;
 use tokio::sync::{broadcast, mpsc, oneshot, RwLock};
 
 use crate::protocol::{ClientEvent, CommandResponse, Device, ServerMessage};
+use crate::server::apns::ApnsClient;
 
 pub type SharedState = Arc<AppState>;
 
@@ -29,10 +30,16 @@ pub struct AppState {
     pub client_tx: broadcast::Sender<ClientEvent>,
     pub start_time: Instant,
     pub data_dir: PathBuf,
+    pub apns: Option<ApnsClient>,
 }
 
 impl AppState {
-    pub fn new(api_key: String, devices: HashMap<String, Device>, data_dir: PathBuf) -> Self {
+    pub fn new(
+        api_key: String,
+        devices: HashMap<String, Device>,
+        data_dir: PathBuf,
+        apns: Option<ApnsClient>,
+    ) -> Self {
         let (client_tx, _) = broadcast::channel(256);
         Self {
             connections: RwLock::new(HashMap::new()),
@@ -43,6 +50,7 @@ impl AppState {
             client_tx,
             start_time: Instant::now(),
             data_dir,
+            apns,
         }
     }
 }

@@ -18,23 +18,26 @@ pub async fn post_command(
 ) -> Result<Json<CommandResponse>, (StatusCode, String)> {
     let connections = state.connections.read().await;
 
-    // Find target device
+    // Find target device — check connected first
     let device_id = if let Some(id) = &req.device_id {
-        if !connections.contains_key(id) || !connections[id].authenticated {
-            return Err((
-                StatusCode::NOT_FOUND,
-                format!("Device {} not connected", id),
-            ));
-        }
         id.clone()
     } else {
+        // Try connected devices first
         let connected: Vec<_> = connections
             .iter()
             .filter(|(_, c)| c.authenticated)
             .collect();
         match connected.len() {
             0 => {
-                return Err((StatusCode::NOT_FOUND, "No devices connected".into()));
+                // No connected devices — try to find a single paired device for APNs fallback
+                let devices = state.devices.read().await;
+                if devices.len() == 1 {
+                    devices.keys().next().unwrap().clone()
+                } else {
+                    drop(devices);
+                    drop(connections);
+                    return Err((StatusCode::NOT_FOUND, "No devices connected".into()));
+                }
             }
             1 => connected[0].0.clone(),
             _ => {
@@ -45,6 +48,18 @@ pub async fn post_command(
             }
         }
     };
+
+    // Check if device is connected and authenticated
+    let is_connected = connections
+        .get(&device_id)
+        .map(|c| c.authenticated)
+        .unwrap_or(false);
+
+    // If device is not connected, try APNs fallback for alarm commands
+    if !is_connected {
+        drop(connections);
+        return try_apns_fallback(&state, &device_id, &req.command, &req.params).await;
+    }
 
     let cmd_id = Uuid::new_v4().to_string();
     let server_msg = ServerMessage::Command {
@@ -93,6 +108,46 @@ pub async fn post_command(
             ))
         }
     }
+}
+
+async fn try_apns_fallback(
+    state: &Arc<AppState>,
+    device_id: &str,
+    command: &str,
+    params: &serde_json::Value,
+) -> Result<Json<CommandResponse>, (StatusCode, String)> {
+    let apns = state.apns.as_ref().ok_or((
+        StatusCode::NOT_FOUND,
+        format!("Device {} not connected and APNs not configured", device_id),
+    ))?;
+
+    let devices = state.devices.read().await;
+    let device = devices.get(device_id).ok_or((
+        StatusCode::NOT_FOUND,
+        format!("Device {} not found", device_id),
+    ))?;
+
+    let push_token = device.push_token.as_ref().ok_or((
+        StatusCode::BAD_REQUEST,
+        format!(
+            "Device {} not connected and has no push token registered",
+            device_id
+        ),
+    ))?;
+
+    let push_token = push_token.clone();
+    drop(devices);
+
+    apns.send_alarm_push(&push_token, command, params)
+        .await
+        .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+
+    Ok(Json(CommandResponse {
+        id: Uuid::new_v4().to_string(),
+        status: "ok".into(),
+        data: Some(serde_json::json!({"delivered_via": "apns"})),
+        error: None,
+    }))
 }
 
 pub async fn get_status(State(state): State<Arc<AppState>>) -> Json<ServerStatus> {
@@ -146,6 +201,7 @@ pub async fn pair_device(
         name: pending.name.clone(),
         token: token.clone(),
         paired_at: now,
+        push_token: None,
     };
 
     // Save device to state

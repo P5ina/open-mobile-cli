@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     let webSocket: WebSocketService
     let alarmService: AlarmService
+    let sleepService: SleepService
     let locationService: LocationService
     let cameraService: CameraService
 
@@ -22,6 +23,17 @@ struct ContentView: View {
                 }
             }
 
+            if sleepService.isActive && !alarmService.isActive {
+                SleepModeView {
+                    sleepService.stop()
+                    webSocket.sendEvent(
+                        event: "sleep.stopped",
+                        data: ["stopped_at": ISO8601DateFormatter().string(from: Date())]
+                    )
+                }
+                .transition(.opacity)
+            }
+
             if alarmService.isActive {
                 AlarmView(message: alarmService.message) {
                     alarmService.stop()
@@ -34,5 +46,6 @@ struct ContentView: View {
             }
         }
         .animation(.easeInOut, value: alarmService.isActive)
+        .animation(.easeInOut, value: sleepService.isActive)
     }
 }

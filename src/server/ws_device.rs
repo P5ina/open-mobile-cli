@@ -10,6 +10,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{info, warn};
 
+use crate::config;
 use crate::protocol::*;
 use crate::server::state::{AppState, DeviceConnection, PendingPairing};
 
@@ -182,6 +183,17 @@ async fn handle_device_message(text: &str, device_id: &str, state: &Arc<AppState
                 device_id: device_id.to_string(),
                 data,
             });
+        }
+        DeviceMessage::PushToken { token } => {
+            let mut devices = state.devices.write().await;
+            if let Some(device) = devices.get_mut(device_id) {
+                device.push_token = Some(token);
+                info!("Stored push token for device {}", device_id);
+                let devices_vec: Vec<_> = devices.values().cloned().collect();
+                let _ = config::save_devices(&devices_vec);
+            } else {
+                warn!("Push token received from unknown device {}", device_id);
+            }
         }
         DeviceMessage::Hello { .. } => {
             warn!("Unexpected Hello message from {}", device_id);
