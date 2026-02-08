@@ -135,7 +135,7 @@ struct SettingsView: View {
             .confirmationDialog("Unpair device?", isPresented: $showResetConfirm) {
                 Button("Unpair", role: .destructive) {
                     webSocket.disconnect()
-                    KeychainService.delete(key: .deviceToken)
+                    KeychainService.deleteToken(for: serverURL)
                 }
             } message: {
                 Text("This will remove the device token. You'll need to pair again.")

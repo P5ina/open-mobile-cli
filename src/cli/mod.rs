@@ -1,4 +1,5 @@
 mod alarm;
+mod camera;
 mod config_cmd;
 mod devices;
 mod locate;
@@ -8,6 +9,7 @@ mod sleep;
 mod status;
 
 pub use alarm::{alarm_start, alarm_stop};
+pub use camera::camera_snap;
 pub use config_cmd::{set_config, show_config};
 pub use devices::list_devices;
 pub use locate::locate;

@@ -58,9 +58,14 @@ struct OmcliApp: App {
         // Request camera permission
         cameraService.requestPermissionIfNeeded()
 
-        // Auto-connect if server URL is configured
+        // Migrate old global token to per-server storage
         let serverURL = UserDefaults.standard.string(forKey: "server_url") ?? ""
         if !serverURL.isEmpty {
+            if let oldToken = KeychainService.load(key: .deviceToken),
+               KeychainService.loadToken(for: serverURL) == nil {
+                KeychainService.saveToken(oldToken, for: serverURL)
+                KeychainService.delete(key: .deviceToken)
+            }
             webSocket.connect()
         }
     }

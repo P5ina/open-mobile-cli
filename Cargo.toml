@@ -24,3 +24,4 @@ dirs = "5"
 mdns-sd = { version = "0.11", features = ["async"] }
 hostname = "0.4"
 a2 = "0.10"
+base64 = "0.22"

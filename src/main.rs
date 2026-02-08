@@ -21,6 +21,11 @@ enum Commands {
         #[command(subcommand)]
         action: AlarmAction,
     },
+    /// Camera commands
+    Camera {
+        #[command(subcommand)]
+        action: CameraAction,
+    },
     /// Send notification to device
     Notify {
         /// Message text
@@ -85,6 +90,22 @@ enum AlarmAction {
 }
 
 #[derive(Subcommand)]
+enum CameraAction {
+    /// Take a photo
+    Snap {
+        /// Camera: front or back
+        #[arg(long, default_value = "back")]
+        facing: String,
+        /// Output file path (default: photo_TIMESTAMP.jpg)
+        #[arg(long)]
+        output: Option<String>,
+        /// Target device ID
+        #[arg(long)]
+        device: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
 enum ConfigAction {
     /// Set a config value (keys: server, api_key, port, bind)
     Set {
@@ -111,6 +132,15 @@ async fn main() {
             }
             AlarmAction::Stop { device } => {
                 omcli::cli::alarm_stop(device.as_deref()).await;
+            }
+        },
+        Commands::Camera { action } => match action {
+            CameraAction::Snap {
+                facing,
+                output,
+                device,
+            } => {
+                omcli::cli::camera_snap(&facing, output.as_deref(), device.as_deref()).await;
             }
         },
         Commands::Notify { message, priority } => {

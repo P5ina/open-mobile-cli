@@ -55,10 +55,16 @@ pub async fn post_command(
         .map(|c| c.authenticated)
         .unwrap_or(false);
 
-    // If device is not connected, try APNs fallback for alarm commands
+    // If device is not connected, try APNs fallback for alarm/sleep commands only
     if !is_connected {
         drop(connections);
-        return try_apns_fallback(&state, &device_id, &req.command, &req.params).await;
+        if req.command.starts_with("alarm.") || req.command.starts_with("sleep.") {
+            return try_apns_fallback(&state, &device_id, &req.command, &req.params).await;
+        }
+        return Err((
+            StatusCode::CONFLICT,
+            format!("Device {} is not connected. Open the app and try again.", device_id),
+        ));
     }
 
     let cmd_id = Uuid::new_v4().to_string();

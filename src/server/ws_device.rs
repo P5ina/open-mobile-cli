@@ -73,8 +73,15 @@ async fn handle_device_socket(mut socket: WebSocket, state: Arc<AppState>) {
             cleanup(&state, &device_id).await;
             return;
         }
+    } else {
+        // Device is already paired — tell it to authenticate
+        let msg = ServerMessage::AuthRequired;
+        let text = serde_json::to_string(&msg).unwrap();
+        if socket.send(Message::Text(text.into())).await.is_err() {
+            cleanup(&state, &device_id).await;
+            return;
+        }
     }
-    // If already paired, device should send Auth message next
 
     // Broadcast connect event
     let _ = state.client_tx.send(ClientEvent {
@@ -152,12 +159,37 @@ async fn handle_device_message(text: &str, device_id: &str, state: &Arc<AppState
                         error: None,
                     });
                 } else {
-                    warn!("Auth failed for device: {}", did);
-                    let _ = conn.tx.send(ServerMessage::AuthResult {
-                        success: false,
-                        token: None,
-                        error: Some("Invalid token".into()),
-                    });
+                    warn!("Auth failed for {}, generating new pairing code", did);
+                    drop(connections);
+
+                    // Remove stale device entry
+                    state.devices.write().await.remove(&did);
+                    let devices_vec: Vec<_> =
+                        state.devices.read().await.values().cloned().collect();
+                    let _ = config::save_devices(&devices_vec);
+
+                    // Generate new pairing code
+                    let code =
+                        format!("{:06}", rand::thread_rng().gen_range(100_000..999_999u32));
+                    info!("Re-pairing code for {}: {}", did, code);
+                    state.pending_pairings.write().await.insert(
+                        code.clone(),
+                        PendingPairing {
+                            device_id: did.clone(),
+                            name: state
+                                .connections
+                                .read()
+                                .await
+                                .get(&did)
+                                .map(|c| c.name.clone())
+                                .unwrap_or_default(),
+                        },
+                    );
+
+                    let mut connections = state.connections.write().await;
+                    if let Some(conn) = connections.get_mut(&did) {
+                        let _ = conn.tx.send(ServerMessage::PairingCode { code });
+                    }
                 }
             }
         }

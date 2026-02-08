@@ -45,6 +45,7 @@ enum DeviceMessage: Encodable {
 
 enum ServerMessage: Decodable {
     case pairingCode(code: String)
+    case authRequired
     case authResult(success: Bool, token: String?, error: String?)
     case command(id: String, command: String, params: [String: AnyCodable])
 
@@ -55,6 +56,8 @@ enum ServerMessage: Decodable {
         case "pairing_code":
             let code = try container.decode(String.self, forKey: .code)
             self = .pairingCode(code: code)
+        case "auth_required":
+            self = .authRequired
         case "auth_result":
             let success = try container.decode(Bool.self, forKey: .success)
             let token = try container.decodeIfPresent(String.self, forKey: .token)

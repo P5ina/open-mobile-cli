@@ -35,6 +35,8 @@ pub enum DeviceMessage {
 pub enum ServerMessage {
     #[serde(rename = "pairing_code")]
     PairingCode { code: String },
+    #[serde(rename = "auth_required")]
+    AuthRequired,
     #[serde(rename = "auth_result")]
     AuthResult {
         success: bool,

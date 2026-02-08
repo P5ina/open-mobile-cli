@@ -32,7 +32,7 @@ final class WebSocketService: @unchecked Sendable {
     @ObservationIgnored var commandHandler: (@Sendable (String, String, [String: AnyCodable]) async -> DeviceMessage)?
 
     private var deviceId: String { KeychainService.getOrCreateDeviceId() }
-    private var deviceToken: String? { KeychainService.load(key: .deviceToken) }
+    private var deviceToken: String? { KeychainService.loadToken(for: serverURL) }
     private var serverURL: String { UserDefaults.standard.string(forKey: "server_url") ?? "" }
     private var deviceName: String {
         let name = UserDefaults.standard.string(forKey: "device_name") ?? ""
@@ -105,11 +105,6 @@ final class WebSocketService: @unchecked Sendable {
             guard let self, success else { return }
             self.addLog("Sent hello as \(self.deviceName)")
             self.startReceiving()
-            // Server reads Hello then enters main loop.
-            // If already paired, send Auth immediately.
-            if self.deviceToken != nil {
-                self.sendAuth()
-            }
         }
     }
 
@@ -122,10 +117,7 @@ final class WebSocketService: @unchecked Sendable {
     }
 
     private func sendAuth() {
-        guard let token = deviceToken else {
-            addLog("No token, cannot auth")
-            return
-        }
+        let token = deviceToken ?? ""
         let msg = DeviceMessage.auth(deviceId: deviceId, token: token)
         send(msg) { [weak self] success in
             guard let self, success else { return }
@@ -181,10 +173,13 @@ final class WebSocketService: @unchecked Sendable {
             connectionState = .waitingForPairing
             addLog("Pairing code: \(code)")
 
+        case .authRequired:
+            sendAuth()
+
         case .authResult(let success, let token, let error):
             if success {
                 if let token {
-                    KeychainService.save(key: .deviceToken, value: token)
+                    KeychainService.saveToken(token, for: serverURL)
                     addLog("Paired successfully")
                 } else {
                     addLog("Authenticated")
@@ -195,7 +190,7 @@ final class WebSocketService: @unchecked Sendable {
                 sendStoredPushToken()
             } else {
                 addLog("Auth failed: \(error ?? "unknown")")
-                KeychainService.delete(key: .deviceToken)
+                KeychainService.deleteToken(for: serverURL)
                 connectionState = .disconnected
             }
 
