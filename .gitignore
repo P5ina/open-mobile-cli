@@ -1,10 +1,5 @@
-# Binaries
-omcli
-omcli-server
-*.exe
-
-# Go
-vendor/
+# Rust
+/target
 
 # iOS
 ios/OpenMobileCLI.xcodeproj/xcuserdata/
