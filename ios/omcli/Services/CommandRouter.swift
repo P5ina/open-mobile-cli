@@ -100,6 +100,7 @@ final class CommandRouter {
     private func errorCode(for error: Error) -> String {
         switch error {
         case CameraError.notAuthorized: return "PERMISSION_DENIED"
+        case CameraError.userDeclined: return "USER_DECLINED"
         case is CameraError: return "CAMERA_ERROR"
         case let clError as NSError where clError.domain == "kCLErrorDomain": return "LOCATION_ERROR"
         case CommandError.unknownCommand: return "UNKNOWN_COMMAND"

@@ -44,8 +44,14 @@ struct ContentView: View {
                 }
                 .transition(.opacity)
             }
+
+            if cameraService.isShowingPreview {
+                CameraPreviewView(cameraService: cameraService)
+                    .transition(.opacity)
+            }
         }
         .animation(.easeInOut, value: alarmService.isActive)
         .animation(.easeInOut, value: sleepService.isActive)
+        .animation(.easeInOut, value: cameraService.isShowingPreview)
     }
 }

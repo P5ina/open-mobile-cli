@@ -8,7 +8,7 @@ struct OmcliApp: App {
     @State private var alarmService = AlarmService()
     @State private var sleepService = SleepService()
     private let locationService = LocationService()
-    private let cameraService = CameraService()
+    @State private var cameraService = CameraService()
     private let notificationService = NotificationService()
     private let ttsService = TTSService()
 

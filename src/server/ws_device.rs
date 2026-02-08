@@ -205,7 +205,8 @@ async fn handle_device_message(text: &str, device_id: &str, state: &Arc<AppState
                     id,
                     status,
                     data,
-                    error: error.map(|e| e.message),
+                    error: error.as_ref().map(|e| e.message.clone()),
+                    error_code: error.map(|e| e.code),
                 });
             }
         }

@@ -14,6 +14,18 @@ pub async fn camera_snap(facing: &str, output: Option<&str>, device: Option<&str
 
     match super::api_request(reqwest::Method::POST, "/api/command", Some(body)).await {
         Ok(resp) => {
+            // Check for device-side errors
+            if resp.get("status").and_then(|s| s.as_str()) == Some("error") {
+                let code = resp.get("error_code").and_then(|c| c.as_str()).unwrap_or("");
+                if code == "USER_DECLINED" {
+                    eprintln!("The photo was declined on the device.");
+                } else {
+                    let msg = resp.get("error").and_then(|e| e.as_str()).unwrap_or("Unknown error");
+                    eprintln!("Error: {msg}");
+                }
+                return;
+            }
+
             // Camera snap requires a live WebSocket connection — APNS can't return data
             if resp.get("data").and_then(|d| d.get("delivered_via")).and_then(|v| v.as_str())
                 == Some("apns")

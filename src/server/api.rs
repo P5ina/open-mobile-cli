@@ -153,6 +153,7 @@ async fn try_apns_fallback(
         status: "ok".into(),
         data: Some(serde_json::json!({"delivered_via": "apns"})),
         error: None,
+        error_code: None,
     }))
 }
 

@@ -53,6 +53,8 @@ omcli camera snap --facing front               # selfie camera
 omcli camera snap --facing back --output pic.jpg  # specific output path
 ```
 
+When a snap command is sent, the phone shows a full-screen camera preview with a live viewfinder. The user must tap the shutter button to take the photo, or tap Cancel to decline. If declined, the CLI shows "The photo was declined on the device." The server has a 30-second timeout for the user to respond.
+
 The phone must have the app open (or in background with active WebSocket). If the device is offline, you'll get an error instead of a silent push notification.
 
 ### Notifications
