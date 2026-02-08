@@ -1,0 +1,20 @@
+# Binaries
+omcli
+omcli-server
+*.exe
+
+# Go
+vendor/
+
+# iOS
+ios/OpenMobileCLI.xcodeproj/xcuserdata/
+ios/OpenMobileCLI.xcodeproj/project.xcworkspace/xcuserdata/
+ios/DerivedData/
+ios/.build/
+
+# Config
+.omcli/
+
+# OS
+.DS_Store
+Thumbs.db
