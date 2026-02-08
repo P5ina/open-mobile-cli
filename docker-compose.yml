@@ -1,0 +1,21 @@
+services:
+  serve:
+    image: p5ina/omcli:latest
+    ports:
+      - "7333:7333"
+    volumes:
+      - ./data:/data
+    environment:
+      - RUST_LOG=info
+    restart: unless-stopped
+
+  relay:
+    image: p5ina/omcli:latest
+    command: ["relay", "--bind", "0.0.0.0", "--port", "7334"]
+    ports:
+      - "7334:7334"
+    volumes:
+      - ./data:/data
+    environment:
+      - RUST_LOG=info
+    restart: unless-stopped

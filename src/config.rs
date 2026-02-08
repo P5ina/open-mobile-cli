@@ -80,6 +80,9 @@ fn default_max_requests() -> u32 {
 
 impl Config {
     pub fn data_dir() -> PathBuf {
+        if let Ok(dir) = std::env::var("OMCLI_DATA_DIR") {
+            return PathBuf::from(dir);
+        }
         dirs::home_dir()
             .expect("cannot determine home directory")
             .join(".omcli")
