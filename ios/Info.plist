@@ -10,6 +10,12 @@
 	<array>
 		<string>audio</string>
 	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>OpenMobileCLI uses the local network to discover servers running on your LAN.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_omcli._tcp</string>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

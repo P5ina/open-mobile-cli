@@ -12,10 +12,65 @@ struct SettingsView: View {
 
     @State private var notificationStatus = "Unknown"
     @State private var showResetConfirm = false
+    @State private var discovery = ServerDiscoveryService()
 
     var body: some View {
         NavigationStack {
             Form {
+                if !discovery.servers.isEmpty || discovery.isSearching {
+                    Section {
+                        if discovery.servers.isEmpty {
+                            HStack {
+                                ProgressView()
+                                    .padding(.trailing, 4)
+                                Text("Searching for servers...")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        ForEach(discovery.servers) { server in
+                            Button {
+                                if let url = server.wsURL {
+                                    serverURL = url
+                                    webSocket.disconnect()
+                                    webSocket.connect()
+                                }
+                            } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(server.name)
+                                        if let host = server.host, let port = server.port {
+                                            Text("\(host):\(port)")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        if let version = server.version {
+                                            Text("v\(version)")
+                                                .font(.caption2)
+                                                .foregroundStyle(.tertiary)
+                                        }
+                                    }
+                                    Spacer()
+                                    if server.wsURL == serverURL {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(.tint)
+                                    }
+                                }
+                            }
+                            .disabled(server.wsURL == nil)
+                            .tint(.primary)
+                        }
+                    } header: {
+                        HStack {
+                            Text("Discovered Servers")
+                            Spacer()
+                            if discovery.isSearching && !discovery.servers.isEmpty {
+                                ProgressView()
+                                    .controlSize(.mini)
+                            }
+                        }
+                    }
+                }
+
                 Section("Server") {
                     TextField("WebSocket URL", text: $serverURL)
                         .textContentType(.URL)
@@ -85,6 +140,8 @@ struct SettingsView: View {
             } message: {
                 Text("This will remove the device token. You'll need to pair again.")
             }
+            .onAppear { discovery.startBrowsing() }
+            .onDisappear { discovery.stopBrowsing() }
             .task {
                 let settings = await UNUserNotificationCenter.current().notificationSettings()
                 notificationStatus = switch settings.authorizationStatus {
