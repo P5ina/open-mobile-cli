@@ -232,6 +232,16 @@ bind = "127.0.0.1"
 3. CLI sends commands via REST API, server relays to device via WebSocket
 4. If device is offline, falls back to APNs push (direct or via relay)
 
+## AI Agent Integration
+
+The file [`omcli-skill.md`](omcli-skill.md) is a skill definition for AI agents (OpenClaw, Claude Code, etc.). Give it to your agent so it can control your phone with natural language:
+
+> "Wake me up at 7am with a loud alarm"
+> "Send a notification to my phone"
+> "Take a photo with the front camera"
+
+The skill file contains all commands, parameters, common patterns, and troubleshooting tips — everything an agent needs to use omcli autonomously.
+
 ## Platforms
 
 | Platform | Download |
