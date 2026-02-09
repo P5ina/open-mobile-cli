@@ -11,10 +11,10 @@ Remote mobile device control from the command line. Single Rust binary — serve
 │  omcli   │ ──────────→ │ omcli serve  │ ←────────────── │  Mobile  │
 │  (CLI)   │             │  (server)    │                 │   App    │
 └──────────┘             └──────────────┘                 └──────────┘
-                               ↑   │                           ↑
-                           CLI for │   ┌───────────┐    APNs   │
-                           scripts └─→ │   omcli   │ ──────────┘
-                           & agents    │   relay   │  (optional)
+      ↑                            │                           ↑
+      CLI for                      │   ┌───────────┐    APNs   │
+      scripts                      └─→ │   omcli   │ ──────────┘
+      & agents                         │   relay   │  (optional)
                                        └───────────┘
 ```
 
