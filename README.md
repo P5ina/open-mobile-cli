@@ -8,12 +8,14 @@ Remote mobile device control from the command line. Single Rust binary — serve
 
 ```
 ┌──────────┐    HTTP     ┌──────────────┐    WebSocket    ┌──────────┐
-│  omcli   │ ─────────→  │ omcli serve  │ ←────────────── │ iOS App  │
-│  (CLI)   │             │   (server)   │                 │          │
+│  omcli   │ ──────────→ │ omcli serve  │ ←────────────── │  Mobile  │
+│  (CLI)   │             │  (server)    │                 │   App    │
 └──────────┘             └──────────────┘                 └──────────┘
-                               ↑
-                          REST API for
-                          scripts & integrations
+                               ↑   │                           ↑
+                           CLI for │   ┌───────────┐    APNs   │
+                           scripts └─→ │   omcli   │ ──────────┘
+                           & agents    │   relay   │  (optional)
+                                       └───────────┘
 ```
 
 ## Quick Start
