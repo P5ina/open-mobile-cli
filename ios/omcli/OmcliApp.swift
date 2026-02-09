@@ -21,7 +21,8 @@ struct OmcliApp: App {
                 callService: appDelegate.callService,
                 sleepService: sleepService,
                 locationService: locationService,
-                cameraService: cameraService
+                cameraService: cameraService,
+                notificationService: notificationService
             )
             .task { await setup() }
         }
@@ -63,22 +64,6 @@ struct OmcliApp: App {
         webSocket.commandHandler = { id, command, params in
             await router.handle(id: id, command: command, params: params)
         }
-
-        // Request notification permission early
-        let granted = await notificationService.requestPermission()
-
-        // Register for remote notifications if permission granted
-        if granted {
-            await MainActor.run {
-                UIApplication.shared.registerForRemoteNotifications()
-            }
-        }
-
-        // Request location permission
-        locationService.requestPermissionIfNeeded()
-
-        // Request camera permission
-        cameraService.requestPermissionIfNeeded()
 
         // Migrate old global token to per-server storage
         let serverURL = UserDefaults.standard.string(forKey: "server_url") ?? ""

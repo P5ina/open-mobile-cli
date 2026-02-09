@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
     let webSocket: WebSocketService
@@ -7,8 +8,29 @@ struct ContentView: View {
     let sleepService: SleepService
     let locationService: LocationService
     let cameraService: CameraService
+    let notificationService: NotificationService
+
+    @AppStorage("has_completed_onboarding") private var hasCompletedOnboarding = false
 
     var body: some View {
+        if hasCompletedOnboarding {
+            mainContent
+        } else {
+            OnboardingView(
+                notificationService: notificationService,
+                locationService: locationService,
+                cameraService: cameraService,
+                onNotificationsGranted: {
+                    UIApplication.shared.registerForRemoteNotifications()
+                },
+                onComplete: {
+                    hasCompletedOnboarding = true
+                }
+            )
+        }
+    }
+
+    private var mainContent: some View {
         ZStack {
             TabView {
                 Tab("Dashboard", systemImage: "gauge.open.with.lines.needle.33percent") {
