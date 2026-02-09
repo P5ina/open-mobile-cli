@@ -280,6 +280,12 @@ The skill file contains all commands, parameters, common patterns, and troublesh
 | macOS Apple Silicon | `omcli-macos-arm64.tar.gz` |
 | Docker | `docker pull p5ina/omcli` |
 
+## Roadmap
+
+- Android companion app
+- Notification before taking a photo
+- Background location tracking
+
 ## License
 
 [MIT](LICENSE)
