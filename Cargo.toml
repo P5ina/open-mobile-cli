@@ -26,3 +26,4 @@ hostname = "0.4"
 a2 = "0.10"
 base64 = "0.22"
 openssl = { version = "0.10", features = ["vendored"] }
+qrcode = { version = "0.14", default-features = false }

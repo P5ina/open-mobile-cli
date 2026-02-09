@@ -10,8 +10,9 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
+use qrcode::QrCode;
 use std::collections::HashMap;
-use std::net::IpAddr;
+use std::net::{IpAddr, UdpSocket};
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 use tracing::{info, warn};
@@ -80,7 +81,70 @@ fn register_mdns(port: u16) -> Option<mdns_sd::ServiceDaemon> {
     Some(mdns)
 }
 
-pub async fn serve(port: u16, bind: String) {
+fn resolve_display_host(bind: &str) -> String {
+    if bind == "0.0.0.0" || bind == "::" {
+        // UDP connect trick: no actual traffic is sent, but the OS picks the right source IP
+        if let Ok(socket) = UdpSocket::bind("0.0.0.0:0") {
+            if socket.connect("8.8.8.8:80").is_ok() {
+                if let Ok(addr) = socket.local_addr() {
+                    return addr.ip().to_string();
+                }
+            }
+        }
+        bind.to_string()
+    } else {
+        bind.to_string()
+    }
+}
+
+fn print_qr_code(url: &str) {
+    let code = match QrCode::new(url.as_bytes()) {
+        Ok(c) => c,
+        Err(e) => {
+            warn!("Failed to generate QR code: {}", e);
+            return;
+        }
+    };
+
+    let colors = code.to_colors();
+    let width = code.width();
+    let quiet = 2; // quiet zone in modules
+
+    // Unicode half-block rendering: each character encodes two vertical modules.
+    // Inverted: dark terminal background = white QR module, printed block = dark QR module.
+    // ▀ = top half, ▄ = bottom half, █ = full block, ' ' = empty
+    println!();
+    for y in (-(quiet as i32)..height_with_quiet(width, quiet)).step_by(2) {
+        print!("  "); // left margin
+        for x in -(quiet as i32)..(width as i32 + quiet as i32) {
+            let top = module_dark(&colors, width, x, y);
+            let bot = module_dark(&colors, width, x, y + 1);
+            // Inverted for dark terminals: dark module → space (shows dark bg), light → block
+            let ch = match (top, bot) {
+                (true, true) => ' ',
+                (true, false) => '▄',
+                (false, true) => '▀',
+                (false, false) => '█',
+            };
+            print!("{ch}");
+        }
+        println!();
+    }
+    println!();
+}
+
+fn height_with_quiet(width: usize, quiet: usize) -> i32 {
+    width as i32 + quiet as i32
+}
+
+fn module_dark(colors: &[qrcode::Color], width: usize, x: i32, y: i32) -> bool {
+    if x < 0 || y < 0 || x >= width as i32 || y >= width as i32 {
+        return false; // quiet zone = light
+    }
+    colors[y as usize * width + x as usize] == qrcode::Color::Dark
+}
+
+pub async fn serve(port: u16, bind: String, no_qr: bool, host: Option<String>) {
     tracing_subscriber::fmt::init();
 
     let config = Config::load_or_create(port, &bind);
@@ -140,6 +204,15 @@ pub async fn serve(port: u16, bind: String) {
     println!("omcli server v{}", env!("CARGO_PKG_VERSION"));
     println!("Listening on {}", addr);
     println!("API key: {}", config.server.api_key);
+
+    // Print QR code for device connection (skip for localhost or --no-qr)
+    if !no_qr && (host.is_some() || !is_localhost(&bind)) {
+        let display_host = host.unwrap_or_else(|| resolve_display_host(&bind));
+        let ws_url = format!("ws://{}:{}/ws/device", display_host, port);
+        print_qr_code(&ws_url);
+        println!("  Scan QR or enter: {}", ws_url);
+        println!();
+    }
 
     // Register mDNS service if not binding to localhost
     let mdns = if is_localhost(&bind) {

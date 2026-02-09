@@ -15,6 +15,12 @@ enum Commands {
         port: u16,
         #[arg(long, default_value = "127.0.0.1")]
         bind: String,
+        /// Suppress QR code output
+        #[arg(long)]
+        no_qr: bool,
+        /// Override host in QR code (for VPS/remote servers)
+        #[arg(long)]
+        host: Option<String>,
     },
     /// Alarm commands
     Alarm {
@@ -126,8 +132,8 @@ async fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Serve { port, bind } => {
-            omcli::server::serve(port, bind).await;
+        Commands::Serve { port, bind, no_qr, host } => {
+            omcli::server::serve(port, bind, no_qr, host).await;
         }
         Commands::Alarm { action } => match action {
             AlarmAction::Start {

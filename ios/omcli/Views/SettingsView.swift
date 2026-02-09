@@ -12,6 +12,7 @@ struct SettingsView: View {
 
     @State private var notificationStatus = "Unknown"
     @State private var showResetConfirm = false
+    @State private var showQRScanner = false
     @State private var discovery = ServerDiscoveryService()
 
     var body: some View {
@@ -83,6 +84,12 @@ struct SettingsView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+
+                    Button {
+                        showQRScanner = true
+                    } label: {
+                        Label("Scan QR Code", systemImage: "qrcode.viewfinder")
+                    }
                 }
 
                 Section("Device") {
@@ -139,6 +146,13 @@ struct SettingsView: View {
                 }
             } message: {
                 Text("This will remove the device token. You'll need to pair again.")
+            }
+            .sheet(isPresented: $showQRScanner) {
+                QRScannerView { url in
+                    serverURL = url
+                    webSocket.disconnect()
+                    webSocket.connect()
+                }
             }
             .onAppear { discovery.startBrowsing() }
             .onDisappear { discovery.stopBrowsing() }
