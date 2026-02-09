@@ -40,6 +40,20 @@ cargo install --path .
 docker run -d -p 7333:7333 -v ./data:/data p5ina/omcli
 ```
 
+## Connecting the iOS App
+
+**LAN (auto-discovery):** Start the server with `--bind 0.0.0.0` — the iOS app finds it automatically via mDNS.
+
+**QR code:** The server prints a scannable QR code in the terminal. In the iOS app, go to Settings → Scan QR Code.
+
+```bash
+omcli serve --bind 0.0.0.0          # QR with auto-detected LAN IP
+omcli serve --bind 0.0.0.0 --host my.vps.com   # QR with custom host (VPS/Tailscale)
+omcli serve --bind 0.0.0.0 --no-qr  # suppress QR (Docker/headless)
+```
+
+**Manual:** Enter `ws://HOST:PORT/ws/device` in the iOS app settings.
+
 ## Usage
 
 ```bash
@@ -189,6 +203,17 @@ docker compose up -d serve
 # Deploy relay (separate machine, or same machine if you need both)
 docker compose up -d relay
 ```
+
+To connect the iOS app, check the logs for the API key and WebSocket URL:
+
+```bash
+docker compose logs serve
+# omcli server v0.1.0
+# Listening on 0.0.0.0:7333
+# API key: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+```
+
+Then enter `ws://YOUR_SERVER_IP:7333/ws/device` in the iOS app settings. On the host machine you can also run `omcli serve --host YOUR_SERVER_IP` to get a scannable QR code.
 
 Config, paired devices, and `.p8` keys are stored in the mounted `./data` volume.
 
