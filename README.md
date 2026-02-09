@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/icon.png" width="128" height="128" alt="omcli icon">
+</p>
+
 # omcli
 
 Remote mobile device control from the command line. Single Rust binary — server, CLI, and push relay in one.

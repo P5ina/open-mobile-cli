@@ -7,10 +7,8 @@ xcuserdata/
 # Config
 .omcli/
 
-# Photos
-*.jpg
-*.jpeg
-*.png
+# Photos (camera snap output)
+photo_*.jpg
 
 # OS
 .DS_Store
