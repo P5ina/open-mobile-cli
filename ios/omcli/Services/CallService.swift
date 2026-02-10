@@ -44,6 +44,7 @@ final class CallService: NSObject, CXProviderDelegate, PKPushRegistryDelegate {
     func pushRegistry(_ registry: PKPushRegistry, didUpdate pushCredentials: PKPushCredentials, for type: PKPushType) {
         let token = pushCredentials.token.map { String(format: "%02x", $0) }.joined()
         print("CallService: VoIP token: \(token)")
+        UserDefaults.standard.set(token, forKey: "voip_token")
         sendVoipToken?(token)
     }
 

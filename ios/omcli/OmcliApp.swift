@@ -65,6 +65,9 @@ struct OmcliApp: App {
             await router.handle(id: id, command: command, params: params)
         }
 
+        // Re-register for push on every launch (no UI, just refreshes APNs token)
+        UIApplication.shared.registerForRemoteNotifications()
+
         // Migrate old global token to per-server storage
         let serverURL = UserDefaults.standard.string(forKey: "server_url") ?? ""
         if !serverURL.isEmpty {

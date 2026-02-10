@@ -27,6 +27,7 @@ final class WebSocketService: @unchecked Sendable {
     @ObservationIgnored private var reconnectAttempt = 0
     @ObservationIgnored private var reconnectTask: Task<Void, Never>?
     @ObservationIgnored private var receiveTask: Task<Void, Never>?
+    @ObservationIgnored private var pingTask: Task<Void, Never>?
     @ObservationIgnored private var isIntentionalDisconnect = false
     @ObservationIgnored private var backgroundTaskId: UIBackgroundTaskIdentifier = .invalid
     @ObservationIgnored var commandHandler: (@Sendable (String, String, [String: AnyCodable]) async -> DeviceMessage)?
@@ -44,6 +45,7 @@ final class WebSocketService: @unchecked Sendable {
             addLog("No server URL configured")
             return
         }
+        guard connectionState == .disconnected else { return }
         isIntentionalDisconnect = false
         reconnectAttempt = 0
         doConnect()
@@ -53,6 +55,8 @@ final class WebSocketService: @unchecked Sendable {
         isIntentionalDisconnect = true
         reconnectTask?.cancel()
         reconnectTask = nil
+        pingTask?.cancel()
+        pingTask = nil
         receiveTask?.cancel()
         receiveTask = nil
         webSocketTask?.cancel(with: .goingAway, reason: nil)
@@ -85,6 +89,7 @@ final class WebSocketService: @unchecked Sendable {
     // MARK: - Private
 
     private func doConnect() {
+        pingTask?.cancel()
         receiveTask?.cancel()
         webSocketTask?.cancel(with: .goingAway, reason: nil)
 
@@ -113,6 +118,7 @@ final class WebSocketService: @unchecked Sendable {
             guard let self, success else { return }
             self.addLog("Sent hello as \(self.deviceName)")
             self.startReceiving()
+            self.startPinging()
         }
     }
 
@@ -147,7 +153,11 @@ final class WebSocketService: @unchecked Sendable {
             completion?(false)
             return
         }
-        webSocketTask?.send(.string(string)) { [weak self] error in
+        guard let task = webSocketTask else {
+            completion?(false)
+            return
+        }
+        task.send(.string(string)) { [weak self] error in
             if let error {
                 self?.addLog("Send error: \(error.localizedDescription)")
                 completion?(false)
@@ -249,6 +259,22 @@ final class WebSocketService: @unchecked Sendable {
             try? await Task.sleep(for: .seconds(delay))
             guard !Task.isCancelled, let self else { return }
             self.doConnect()
+        }
+    }
+
+    private func startPinging() {
+        pingTask?.cancel()
+        pingTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(15))
+                guard !Task.isCancelled, let self, let task = self.webSocketTask else { return }
+                task.sendPing { error in
+                    if error != nil {
+                        // Connection is dead — cancel task so receive loop exits and reconnects
+                        task.cancel(with: .goingAway, reason: nil)
+                    }
+                }
+            }
         }
     }
 
