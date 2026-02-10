@@ -1,24 +1,47 @@
+---
 name: omcli
-description: Control Timur's iPhone remotely — alarm, camera, notifications, location, sleep mode, status.
+description: Remote mobile device control from the command line — alarm, camera, notifications, location, sleep mode, status.
+allowed-tools: Bash
+---
+
+## Overview
+
+omcli is a single Rust binary that includes a WebSocket relay server, a CLI client, and an optional push notification relay. The iOS companion app connects to the server via WebSocket; CLI commands are sent over HTTP and relayed to the device in real-time.
 
 ## Setup
 
-Server runs on Raspberry Pi via systemd, port 7333.
-Tailscale IP: 100.108.168.112
-Config: ~/.omcli/config.toml
+```bash
+# Start server (default: 127.0.0.1:7333)
+omcli serve
+omcli serve --bind 0.0.0.0 --port 7333       # LAN-accessible, iOS app auto-discovers via mDNS
+omcli serve --bind 0.0.0.0 --host my.vps.com  # custom host in QR code
 
-The iPhone app connects to the server over WebSocket. If one device is paired, `--device` is optional for all commands.
-The app stores pairing tokens per server URL, so switching between servers (e.g. local vs Tailscale) doesn't require re-pairing.
+# Point CLI at the server (only needed if server is remote)
+omcli config set server http://HOST:7333
+omcli config set api_key <key>                 # from server startup logs
+```
+
+Config: `~/.omcli/config.toml` (or `$OMCLI_DATA_DIR/config.toml` in Docker).
+
+The iOS app connects to the server over WebSocket. If one device is paired, `--device` is optional for all commands. The app stores pairing tokens per server URL, so switching between servers doesn't require re-pairing.
 
 ## Commands
 
-### Alarm
+### Pair
 
-Start an alarm on the phone. The phone will play a looping siren sound until stopped.
+Pair a device using the 6-digit code shown in the iOS app.
 
 ```
-omcli alarm start                              # default volume
-omcli alarm start --sound loud                 # max volume
+omcli pair 123456
+```
+
+### Alarm
+
+Start an alarm on the phone. The phone plays a looping siren sound until stopped.
+
+```
+omcli alarm start                              # default volume (70%)
+omcli alarm start --sound loud                 # max volume (100%)
 omcli alarm start --sound hell                 # max volume + continuous vibration
 omcli alarm start --sound loud --message "Wake up!"
 omcli alarm stop
@@ -31,17 +54,16 @@ If the app is killed, the server falls back to APNs push notification (limited �
 
 ### Sleep mode
 
-Keeps the phone screen on and WebSocket alive so alarms work reliably. Use this before going to bed.
+Keeps the phone screen on and WebSocket alive so alarms work reliably.
 
 ```
-omcli sleep          # activate sleep mode — screen stays on, shows clock
-omcli wake           # deactivate sleep mode
+omcli sleep                    # activate — screen stays on, shows clock
+omcli wake                     # deactivate
 ```
 
-Sleep mode persists across app restarts. The phone shows a dark clock screen with "Alarm standby".
-When an alarm fires during sleep mode, the full-screen alarm overlay takes over.
+Sleep mode persists across app restarts. The phone shows a dark clock screen with "Alarm standby". When an alarm fires during sleep mode, the full-screen alarm overlay takes over.
 
-Always run `omcli sleep` before relying on alarm. Without it, iOS may kill the app and alarms won't loop.
+Always activate sleep mode before relying on alarm. Without it, iOS may kill the app and alarms won't loop.
 
 ### Camera
 
@@ -50,12 +72,10 @@ Take a photo using the phone's camera. Requires a live WebSocket connection (wil
 ```
 omcli camera snap                              # back camera, auto filename (photo_YYYY-MM-DD_HH-MM-SS.jpg)
 omcli camera snap --facing front               # selfie camera
-omcli camera snap --facing back --output pic.jpg  # specific output path
+omcli camera snap --facing back --output pic.jpg
 ```
 
-When a snap command is sent, the phone shows a full-screen camera preview with a live viewfinder. The user must tap the shutter button to take the photo, or tap Cancel to decline. If declined, the CLI shows "The photo was declined on the device." The server has a 30-second timeout for the user to respond.
-
-The phone must have the app open (or in background with active WebSocket). If the device is offline, you'll get an error instead of a silent push notification.
+The phone shows a full-screen camera preview. The user must tap the shutter button to take the photo, or tap Cancel to decline. If declined, the CLI shows "The photo was declined on the device." The server has a 30-second timeout.
 
 ### Notifications
 
@@ -90,21 +110,21 @@ omcli devices        # list all paired devices with online/offline status
 
 ```
 omcli config                          # show current config
-omcli config set server <url>         # set server URL
-omcli config set api_key <key>        # set API key
-omcli config set port <port>          # set server port
+omcli config set server <url>         # server URL
+omcli config set api_key <key>        # API key
+omcli config set port <port>          # server port
 omcli config set apns.key_path <path> # APNs .p8 key file path
 omcli config set apns.key_id <id>     # APNs key ID
 omcli config set apns.team_id <id>    # Apple team ID
-omcli config set apns.bundle_id <id>  # App bundle ID
-omcli config set apns.sandbox true    # Use sandbox APNs (for dev)
+omcli config set apns.bundle_id <id>  # app bundle ID
+omcli config set apns.sandbox true    # use sandbox APNs (for dev builds)
 ```
 
 ## Common patterns
 
 **Wake someone up reliably:**
 ```
-omcli sleep                                    # do this before they go to bed
+omcli sleep
 omcli alarm start --sound hell --message "WAKE UP"
 ```
 
@@ -114,23 +134,39 @@ omcli status
 ```
 Look at "Devices online" — if 0, the app is not connected.
 
-**Gentle nudge:**
+**Quick notification:**
 ```
 omcli notify "Hey, check your phone" --priority critical
 ```
 
-## Troubleshooting
-
-- "No devices connected" — the iOS app is not running or not connected. Open the app on the phone.
-- "Device is not connected" — commands like `camera snap` need a live WebSocket. Open the app.
-- "Device not connected and APNs not configured" — set up APNs config for offline fallback (alarm/sleep only).
-- Alarm doesn't loop when app is killed — this is an iOS limitation. Use `omcli sleep` before bed.
-- `--device` flag is needed only when multiple devices are paired.
-- If the app lost its token (reinstall, etc.), it auto-recovers by requesting a new pairing code.
-
 ## Protocol commands (not exposed as CLI yet)
 
-These work via the REST API (`POST /api/command`) but have no CLI wrapper:
+These work via the REST API (`POST /api/command`) but have no CLI subcommand:
 
 - `tts.speak` — text-to-speech: `{"command": "tts.speak", "params": {"text": "Hello", "voice": "optional"}}`
-- `device.status` — battery, charging state: `{"command": "device.status", "params": {}}`
+- `device.status` — battery level, charging state: `{"command": "device.status", "params": {}}`
+
+## REST API
+
+All commands go through `POST /api/command` with Bearer token auth:
+
+```
+curl -X POST http://HOST:7333/api/command \
+  -H "Authorization: Bearer <api_key>" \
+  -H "Content-Type: application/json" \
+  -d '{"command": "alarm.start", "params": {"sound": "loud"}, "device_id": "optional"}'
+```
+
+Other endpoints:
+- `GET /api/status` — server status
+- `GET /api/devices` — list paired devices
+- `POST /api/devices/pair` — pair device with `{"code": "123456"}`
+
+## Troubleshooting
+
+- "No devices connected" — the iOS app is not running or WebSocket is disconnected. Open the app.
+- "Device is not connected" — commands like `camera snap` need a live WebSocket. Open the app.
+- "Device not connected and APNs not configured" — set up APNs or relay for offline push fallback.
+- Alarm doesn't loop when app is killed — iOS limitation. Use `omcli sleep` before bed.
+- `--device` flag is needed only when multiple devices are paired.
+- If the app lost its token (reinstall, etc.), it auto-recovers by requesting a new pairing code.
